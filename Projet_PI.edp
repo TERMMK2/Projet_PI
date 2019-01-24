@@ -1,0 +1,164 @@
+//-------------------------------
+// ProjetPI.edp
+//-------------------------------
+
+// Fichiers de sortie
+ofstream tfile("laplace.txt");
+
+// Définition des constantes utiles
+real x0=0.5;
+real y0=0.5;
+real r=0.1;
+int n=100;
+real eps = 0.15;
+real eps2 = 10.^(-6); // Ecart minimal du trou avec le bord (je sais pas si c'est le truc le plus utile de l'univers mais bon) + condition d'arret (beaucoup plus utile essayer de voir si besoin à séparer les 2)
+real h = 0.001; // Pas de déplacement maximal du trou lors de l'algo. (vitesse d'apprentissage)
+real delta = 0.;
+int k=0; //compte le nombre de tour de boucle.
+
+// Square
+border Gamma1(t=0,1) {x=t; y=0;};   //bas
+border Gamma2(t=0,1) {x=1; y=t;};   //droite
+border Gamma3(t=0,1) {x=1-t; y=1;}; //haut
+border Gamma4(t=0,1) {x=0; y=1-t;}; //gauche
+// Circular Hole
+border GammaC(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+// Création du maillage
+mesh Thmin = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaC(-300));
+//plot(Th, ps="Thwithhole.eps");
+//
+// Définition de l'espace de discrétisation
+fespace Vhmin(Thmin,P1);
+Vhmin umin,uhmin;
+problem laplace(umin,uhmin,solver=CG) =
+int2d(Thmin)(dx(umin)*dx(uhmin)+dy(umin)*dy(uhmin))
++on(Gamma2,umin=1)
++on(Gamma4,umin=0)
++on(GammaC,umin=0);
+// Résolution de Laplace
+laplace;
+
+plot(umin);
+
+//On oublie x0 et y0
+x0 = eps+r;
+y0 = eps+r;
+//Def des 2 variables qui nous permettent de déterminer l'arrêt.
+real f1 = 0.;
+real f = 1;
+
+//-----------------------------------------------------------------------------
+//-------------DEBUT BOUCLE METHODE DE SENSI-----------------------------------
+//-----------------------------------------------------------------------------
+
+while(abs((f-f1))>eps2*f1)
+  {
+    //----------------ETAPE 1 : RESOLUTION DU PROBLEME P-----------------------
+    // Circular Hole
+    border GammaH(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+    // Création du maillage
+    mesh Th = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaH(-300));
+
+    // Définition de l'espace de discrétisation
+    fespace Vh(Th,P1);
+    Vh u,uh,udx,udy;
+    problem laplace(u,uh,solver=CG) =
+      int2d(Th)(dx(u)*dx(uh)+dy(u)*dy(uh))
+      +on(Gamma2,u=1)
+      +on(Gamma4,u=0)
+      +on(GammaH,u=0);
+    // Résolution de Laplace
+    laplace;
+
+    udx = dx(umin);
+    udy = dy(umin);
+
+    plot(u);
+
+    //-----ETAPE 2 : CALCULER LA SOLUTION DU PROBLEME P' DANS 2 DIRECTIONS-----
+
+    x0 += h;
+
+    // Circular Hole
+    border GammaHpx(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);label = 12;};
+    // Création du maillage
+    mesh Thpx = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaHpx(-300));
+    // Définition de l'espace de discrétisation
+    fespace Vhpx(Thpx,P1);
+    Vhpx upx,uhpx,cpx;
+    cpx = 0;
+    for (int m=0;m<Thpx.nbe;++m) {
+      if (Thpx.be(m).label == 12){
+        x = Thpx.be(m)[0].x;
+        x -= h;
+        y = Thpx.be(m)[0].y;
+        cpx[][Thpx.be(m)[0]] = -udx(x,y);
+      }
+    }
+    problem laplacepx(upx,uhpx,solver=CG) =
+      int2d(Thpx)(dx(upx)*dx(uhpx)+dy(upx)*dy(uhpx))
+      +on(Gamma2,upx=0)
+      +on(Gamma4,upx=0)
+      +on(12,upx=cpx);
+    // Résolution de Laplace
+    laplacepx;
+    real a = int1d(Thmin,Gamma2)(dx(upx)*(dx(u) - dx(umin)));
+    + int1d(Thmin,Gamma4)(dx(upx)*(dx(u) + dx(umin)));
+    //integrale de dx(up) fois (dx(u)-omegad) sur le bord droit + integrale de dx(up) fois (dx(up)+omegag) sur le bord gauche
+
+
+    x0 -= h;
+    y0 += h;
+
+    // Circular Hole
+    border GammaHpy(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t); label = 42;};
+    // Création du maillage
+    mesh Thpy = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaHpy(-300));
+    // Définition de l'espace de discrétisation
+    fespace Vhpy(Thpy,P1);
+    Vhpy upy,uhpy,cpy;
+    cpy = 0;
+    for (int m=0;m<Thpy.nbe;++m) {
+      if (Thpy.be(m).label == 42){
+        x = Thpy.be(m)[0].x;
+        y = Thpy.be(m)[0].y;
+        y -= h;
+        cpy[][Thpy.be(m)[0]] = -udy(x,y);
+      }
+    }
+    problem laplacepy(upy,uhpy,solver=CG) =
+      int2d(Thpy)(dx(upy)*dx(uhpy)+dy(upy)*dy(uhpy))
+      +on(Gamma2,upy=0)
+      +on(Gamma4,upy=0)
+      +on(42,upy=cpy);
+    // Résolution de Laplace
+    laplacepy;
+    real b = int1d(Thmin,Gamma2)(dx(upy)*(dx(u) - dx(umin)))
+    + int1d(Thmin,Gamma4)(dx(upy)*(dx(u) + dx(umin)));
+    // définir b =  integrale de dx(up) fois dx(u)-omegad sur le bord droit + integrale de -dx(up) fois dx(up)+omegag
+
+
+
+    y0 -= h;
+
+    x0 -= (h/sqrt(a*a + b*b)) * a;
+    y0 -= (h/sqrt(a*a + b*b)) * b;
+
+    f1 = f;
+
+    f = int1d(Thmin,Gamma2)((dx(u) - dx(umin))^2) + int1d(Thmin,Gamma4)((-dx(u) + dx(umin))^2);
+
+    cout << "******************************" << endl;
+    cout << "* k = " << k << endl;
+    k++;
+    cout << "* residual = " << abs(f-f1) << endl;
+    cout << "* x0 = " << x0 << " * y0 = " << y0 << endl;
+    cout << "* deplacement de x0 = " <<  (-(h/sqrt(a*a + b*b))*a) <<"  deplacement de y0 :" <<(h/sqrt(a*a + b*b))*b <<endl;
+    cout << "******************************" << endl;
+    cout << " " << endl;
+  }
+
+
+
+//afficher la solution que l'on a obtenue (u,uh) et en combien de temps.
+// cout<<"On a trouver le trou en ("<<x0<<","<<y0<<"), ce qui est proche à "<<(x0-0.5)*(x0-0.5) + (y0-0.5)*(y0-0.5) << ", après "<< k << " itérations."<<endl;
