@@ -10,19 +10,19 @@ real x0=0.5;
 real y0=0.5;
 real r=0.1;
 int n=100;
-real eps = 0.15;
-real eps2 = 10.^(-6); // Ecart minimal du trou avec le bord (je sais pas si c'est le truc le plus utile de l'univers mais bon) + condition d'arret (beaucoup plus utile essayer de voir si besoin à séparer les 2)
-real h = 0.001; // Pas de déplacement maximal du trou lors de l'algo. (vitesse d'apprentissage)
+real eps = 10.^-6; // Ecart minimal du trou avec le bord (je sais pas si c'est le truc le plus utile de l'univers mais bon)
+real eps2 = 0.001; // condition d'arret 
+real h = 0.01; // Pas de déplacement maximal du trou lors de l'algo. (vitesse d'apprentissage)
 real delta = 0.;
 int k=0; //compte le nombre de tour de boucle.
 
 // Square
-border Gamma1(t=0,1) {x=t; y=0;};   //bas
-border Gamma2(t=0,1) {x=1; y=t;};   //droite
-border Gamma3(t=0,1) {x=1-t; y=1;}; //haut
-border Gamma4(t=0,1) {x=0; y=1-t;}; //gauche
+border Gamma1(t=0,1.) {x=t; y=0.;};   //bas
+border Gamma2(t=0,1.) {x=1.; y=t;};   //droite
+border Gamma3(t=0,1.) {x=1.-t; y=1;}; //haut
+border Gamma4(t=0,1.) {x=0.; y=1.-t;}; //gauche
 // Circular Hole
-border GammaC(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+border GammaC(t=0., 2.*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
 // Création du maillage
 mesh Thmin = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaC(-300));
 //plot(Th, ps="Thwithhole.eps");
@@ -31,18 +31,18 @@ mesh Thmin = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaC(-300));
 fespace Vhmin(Thmin,P1);
 Vhmin umin,uhmin;
 problem laplace(umin,uhmin,solver=CG) =
-int2d(Thmin)(dx(umin)*dx(uhmin)+dy(umin)*dy(uhmin))
-+on(Gamma2,umin=1)
-+on(Gamma4,umin=0)
-+on(GammaC,umin=0);
+  int2d(Thmin)(dx(umin)*dx(uhmin)+dy(umin)*dy(uhmin))
+  +on(Gamma2,umin=1.)
+  +on(Gamma4,umin=0.)
+  +on(GammaC,umin=0.);
 // Résolution de Laplace
 laplace;
 
 plot(umin);
 
 //On oublie x0 et y0
-x0 = eps+r;
-y0 = eps+r;
+x0 = 1.-(eps+r)-2*h  ;
+y0 = (eps+r) +h ;
 //Def des 2 variables qui nous permettent de déterminer l'arrêt.
 real f1 = 0.;
 real f = 1;
@@ -51,7 +51,7 @@ real f = 1;
 //-------------DEBUT BOUCLE METHODE DE SENSI-----------------------------------
 //-----------------------------------------------------------------------------
 
-while(abs((f-f1))>eps2*f1)
+while(abs(f)>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas vers 0
   {
     //----------------ETAPE 1 : RESOLUTION DU PROBLEME P-----------------------
     // Circular Hole
@@ -134,7 +134,7 @@ while(abs((f-f1))>eps2*f1)
     // Résolution de Laplace
     laplacepy;
     real b = int1d(Thmin,Gamma2)(dx(upy)*(dx(u) - dx(umin)))
-    + int1d(Thmin,Gamma4)(dx(upy)*(dx(u) + dx(umin)));
+      + int1d(Thmin,Gamma4)(dx(upy)*(dx(u) + dx(umin)));
     // définir b =  integrale de dx(up) fois dx(u)-omegad sur le bord droit + integrale de -dx(up) fois dx(up)+omegag
 
 
@@ -142,7 +142,7 @@ while(abs((f-f1))>eps2*f1)
     y0 -= h;
 
     x0 -= (h/sqrt(a*a + b*b)) * a;
-    y0 -= (h/sqrt(a*a + b*b)) * b;
+    y0 += (h/sqrt(a*a + b*b)) * b;
 
     f1 = f;
 
@@ -154,8 +154,9 @@ while(abs((f-f1))>eps2*f1)
     cout << "* residual = " << abs(f-f1) << endl;
     cout << "* x0 = " << x0 << " * y0 = " << y0 << endl;
     cout << "* deplacement de x0 = " <<  (-(h/sqrt(a*a + b*b))*a) <<"  deplacement de y0 :" <<(h/sqrt(a*a + b*b))*b <<endl;
+    cout << "grad(f) = ( "<< a <<" , "<< b <<" )"<<endl; 
+    cout <<"f1 = " << f1 << " , f = " << f<<endl;
     cout << "******************************" << endl;
-    cout << " " << endl;
   }
 
 
