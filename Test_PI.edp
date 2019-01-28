@@ -1,0 +1,133 @@
+//Test grad f en 0.25, 0.25 dans la direction x.
+
+
+// Fichiers de sortie
+ofstream tfile("laplace.txt");
+
+// Définition des constantes utiles
+real x0=0.5;
+real y0=0.5;
+real r=0.1;
+int n=500;
+real eps = 10.^-6; // Ecart minimal du trou avec le bord (je sais pas si c'est le truc le plus utile de l'univers mais bon)
+real eps2 = 0.001; // condition d'arret 
+real h = 0.01; // Pas de déplacement maximal du trou lors de l'algo. (vitesse d'apprentissage)
+real delta = 0.;
+int k=0; //compte le nombre de tour de boucle.
+
+// Square
+border Gamma1(t=0,1.) {x=t; y=0.;};   //bas
+border Gamma2(t=0,1.) {x=1.; y=t;};   //droite
+border Gamma3(t=0,1.) {x=1.-t; y=1;}; //haut
+border Gamma4(t=0,1.) {x=0.; y=1.-t;}; //gauche
+// Circular Hole
+border GammaC(t=0., 2.*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+// Création du maillage
+mesh Thmin = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaC(-500));
+//plot(Th, ps="Thwithhole.eps");
+//
+// Définition de l'espace de discrétisation
+fespace Vhmin(Thmin,P1);
+Vhmin umin,uhmin;
+problem laplacemin(umin,uhmin,solver=CG) =
+  int2d(Thmin)(dx(umin)*dx(uhmin)+dy(umin)*dy(uhmin))
+  +on(Gamma2,umin=1.)
+  +on(Gamma4,umin=0.)
+  +on(GammaC,umin=0.);
+// Résolution de Laplace
+laplacemin;
+
+plot(umin);
+
+//On oublie x0 et y0
+x0 = 0.25 ;
+y0 = 0.25 ;
+
+real f1 = 0.;
+real f = 0.;
+real fm1 = 0.;
+
+//Calcul de la val de f en 0.25,0.25-------------------------------------------------
+border GammaH(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+// Création du maillage
+mesh Th = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaH(-500));
+
+// Définition de l'espace de discrétisation
+fespace Vh(Th,P1);
+Vh u,uh,udx,udy;
+problem laplace(u,uh,solver=CG) =
+  int2d(Th)(dx(u)*dx(uh)+dy(u)*dy(uh))
+  +on(Gamma2,u=1)
+  +on(Gamma4,u=0)
+  +on(GammaH,u=0);
+// Résolution de Laplace
+laplace;
+
+udx = dx(umin);
+udy = dy(umin);
+
+plot(u);
+
+f = int1d(Thmin,Gamma2)((dx(u) - dx(umin))^2) + int1d(Thmin,Gamma4)((-dx(u) + dx(umin))^2);
+//-----------------------------------------------------------------------------------
+
+
+y0 += 0.0001;
+
+
+//Calcul de f en x0 + eps -----------------------------------------------------------
+border GammaH1(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+// Création du maillage
+mesh Th1 = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaH1(-500));
+
+// Définition de l'espace de discrétisation
+fespace Vh1(Th1,P1);
+Vh1 u1,uh1,udx1,udy1;
+problem laplace1(u1,uh1,solver=CG) =
+  int2d(Th1)(dx(u1)*dx(uh1)+dy(u1)*dy(uh1))
+  +on(Gamma2,u1=1)
+  +on(Gamma4,u1=0)
+  +on(GammaH1,u1=0);
+// Résolution de Laplace
+laplace1;
+
+udx1 = dx(umin);
+udy1 = dy(umin);
+
+plot(u);
+
+f1 = int1d(Thmin,Gamma2)((dx(u1) - dx(umin))^2) + int1d(Thmin,Gamma4)((-dx(u1) + dx(umin))^2);
+//-----------------------------------------------------------------------------------
+
+
+y0 -= 0.0002;
+
+
+//Calcul de f en x0 - eps -----------------------------------------------------------
+border GammaH2(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+// Création du maillage
+mesh Th2 = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaH2(-500));
+
+// Définition de l'espace de discrétisation
+fespace Vh2(Th2,P1);
+Vh2 u2,uh2,udx2,udy2;
+problem laplace2(u2,uh2,solver=CG) =
+  int2d(Th2)(dx(u2)*dx(uh2)+dy(u2)*dy(uh2))
+  +on(Gamma2,u2=1)
+  +on(Gamma4,u2=0)
+  +on(GammaH2,u2=0);
+// Résolution de Laplace
+laplace2;
+
+udx2 = dx(umin);
+udy2 = dy(umin);
+
+plot(u);
+
+fm1 = int1d(Thmin,Gamma2)((dx(u2) - dx(umin))^2) + int1d(Thmin,Gamma4)((-dx(u2) + dx(umin))^2);
+//-----------------------------------------------------------------------------------
+
+cout<<"----------------------------------------------------------------------"<<endl;
+cout<<" f = "<<f<<endl;
+cout<<" df/dy = "<<f1-fm1/0.01<<endl;
+cout<<"----------------------------------------------------------------------"<<endl;

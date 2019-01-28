@@ -1,6 +1,6 @@
-//-------------------------------
+//--------------------------------------
 // ProjetPI.edp
-//-------------------------------
+//--------------------------------------
 
 // Fichiers de sortie
 ofstream tfile("laplace.txt");
@@ -41,8 +41,8 @@ laplace;
 plot(umin);
 
 //On oublie x0 et y0
-x0 = 1.-(eps+r)-2*h  ;
-y0 = (eps+r) +h ;
+x0 = 0.25  ;
+y0 = 0.25 ;
 //Def des 2 variables qui nous permettent de déterminer l'arrêt.
 real f1 = 0.;
 real f = 1;
@@ -103,7 +103,7 @@ while(abs(f)>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pa
     // Résolution de Laplace
     laplacepx;
     real a = int1d(Thmin,Gamma2)(dx(upx)*(dx(u) - dx(umin)));
-    + int1d(Thmin,Gamma4)(dx(upx)*(dx(u) + dx(umin)));
+    + int1d(Thmin,Gamma4)(dx(upx)*(dx(u) - dx(umin)));
     //integrale de dx(up) fois (dx(u)-omegad) sur le bord droit + integrale de dx(up) fois (dx(up)+omegag) sur le bord gauche
 
 
@@ -134,7 +134,7 @@ while(abs(f)>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pa
     // Résolution de Laplace
     laplacepy;
     real b = int1d(Thmin,Gamma2)(dx(upy)*(dx(u) - dx(umin)))
-      + int1d(Thmin,Gamma4)(dx(upy)*(dx(u) + dx(umin)));
+      + int1d(Thmin,Gamma4)(dx(upy)*(dx(u) - dx(umin)));
     // définir b =  integrale de dx(up) fois dx(u)-omegad sur le bord droit + integrale de -dx(up) fois dx(up)+omegag
 
 
@@ -142,7 +142,7 @@ while(abs(f)>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pa
     y0 -= h;
 
     x0 -= (h/sqrt(a*a + b*b)) * a;
-    y0 += (h/sqrt(a*a + b*b)) * b;
+    y0 -= (h/sqrt(a*a + b*b)) * b;
 
     f1 = f;
 
