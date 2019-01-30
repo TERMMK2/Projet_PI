@@ -87,6 +87,30 @@ while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas v
 
     plot(u);
 
+    //-----ETAPE 2 : CALCULER LA SOLUTION DU PROBLEME ADJOINT------------------
+
+    real a = int1d(Thmin,Gamma2)(dx(u)*(dx(u) - dx(umin)));
+    + int1d(Thmin,Gamma4)(dx(u)*(dx(u) - dx(umin)));
+
+    border GammaHa(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
+
+    mesh Tha = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaH(-300));
+
+
+    fespace Vha(Tha,P1);
+    Vh ua,uha;
+    problem laplace(ua,uha,solver=CG) =
+      int2d(Th)(dx(ua)*dx(uha)+dy(ua)*dy(uha))
+      + a
+      +on(Gamma2,ua=1)
+      +on(Gamma4,ua=0)
+      +on(GammaH,ua=0);
+    // Résolution de Laplace
+    laplace;
+
+
+
+
    
     //-----ETAPE 2 : CALCULER LA SOLUTION DU PROBLEME P' DANS 2 DIRECTIONS-----
 
