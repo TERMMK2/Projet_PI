@@ -65,6 +65,9 @@ real f = 1.;
 real a = 1.;
 real b = 1.;
 real err = sqrt(a^2+b^2);
+real err_pair = 0.;
+real err_impair = 0.;
+int k=0; //numero d iteration
 =======
 //Def des variables contenant le gradient de f.
 real a = 1.;
@@ -102,6 +105,9 @@ while((sqrt(a^2 + b^2))>eps2) // On sort lorsque la norme du gradient est petite
     udy = dy(u);
 
     plot(u);
+
+    // compteur
+    k += 1;
 
     //-----ETAPE 2 : CALCULER LA SOLUTION DU PROBLEME P' DANS 2 DIRECTIONS-----
 
@@ -177,6 +183,23 @@ while((sqrt(a^2 + b^2))>eps2) // On sort lorsque la norme du gradient est petite
 
     if(err < 5*h)
       h /= 5.;
+
+    if(k%2==0)
+      {
+        if(abs(err_pair-err)<eps2)
+          err = 0.;
+          cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
+      }
+        else
+          err_pair = err;
+    else
+      {
+        if(abs(err_impair-err)<eps2)
+          err = 0.;
+          cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
+        }
+        else
+          err_impair = err;
 
     cout << "******************************" << endl;
     cout << "* err = " << err << endl;
