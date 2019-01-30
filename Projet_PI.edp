@@ -10,9 +10,9 @@ real x0=0.5;
 real y0=0.5;
 real r=0.1;
 int n=100;
-real eps = 10.^-6; // Ecart minimal du trou avec le bord (je sais pas si c'est le truc le plus utile de l'univers mais bon)
-real eps2 = 0.001; // condition d'arret
-real h = 0.01; // Pas de déplacement maximal du trou lors de l'algo. (vitesse d'apprentissage)
+real eps = 10.^-2; // Ecart minimal du trou avec le bord (je sais pas si c'est le truc le plus utile de l'univers mais bon)
+real eps2 = 10.^-4; // condition d'arret
+real h = 0.05; // Pas de déplacement maximal du trou lors de l'algo. (vitesse d'apprentissage)
 real delta = 0.;
 int k=0; //compte le nombre de tour de boucle.
 
@@ -41,20 +41,21 @@ laplace;
 plot(umin);
 
 //On oublie x0 et y0
-x0 = 0.89  ;
-y0 = 0.89 ;
+x0 = 0.5  ;
+y0 = 0.8 ;
 //Def des 2 variables qui nous permettent de déterminer l'arrêt.
 real f1 = 0.;
 real f = 1;
 
-real a = 1;
-real b = 1;
+real a = 1.;
+real b = 1.;
+real err = sqrt(a^2+b^2);
 
 //-----------------------------------------------------------------------------
 //-------------DEBUT BOUCLE METHODE DE SENSI-----------------------------------
 //-----------------------------------------------------------------------------
 
-while((sqrt(a^2 + b^2))>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas vers 0
+while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas vers 0
   {
     //----------------ETAPE 1 : RESOLUTION DU PROBLEME P-----------------------
     // Circular Hole
@@ -109,7 +110,6 @@ while((sqrt(a^2 + b^2))>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f
     + int1d(Thmin,Gamma4)(dx(upx)*(dx(u) - dx(umin)));
     //integrale de dx(up) fois (dx(u)-omegad) sur le bord droit + integrale de dx(up) fois (dx(up)+omegag) sur le bord gauche
 
-
     x0 -= h;
     y0 += h;
 
@@ -140,8 +140,6 @@ while((sqrt(a^2 + b^2))>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f
       + int1d(Thmin,Gamma4)(dx(upy)*(dx(u) - dx(umin)));
     // définir b =  integrale de dx(up) fois dx(u)-omegad sur le bord droit + integrale de -dx(up) fois dx(up)+omegag
 
-
-
     y0 -= h;
 
     x0 -= (h/sqrt(a*a + b*b)) * a;
@@ -151,14 +149,21 @@ while((sqrt(a^2 + b^2))>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f
 
     f = 0.5*(int1d(Thmin,Gamma2)((dx(u) - dx(umin))^2) + int1d(Thmin,Gamma4)((-dx(u) + dx(umin))^2));
 
+    err = sqrt(a^2 + b^2);
+
+    if(err < 5*h)
+      h /= 5.;
+
     cout << "******************************" << endl;
+    cout << "* err = " << err << endl;
+    cout << "* h = " << h << endl;
     cout << "* k = " << k << endl;
     k++;
     cout << "* residual = " << abs(f-f1) << endl;
     cout << "* x0 = " << x0 << " * y0 = " << y0 << endl;
     cout << "* deplacement de x0 = " <<  (-(h/sqrt(a*a + b*b))*a) <<"  deplacement de y0 :" <<(h/sqrt(a*a + b*b))*b <<endl;
-    cout << "grad(f) = ( "<< a <<" , "<< b <<" )"<<endl;
-    cout << "f1 = " << f1 << " , f = " << f<<endl;
+    cout << "* grad(f) = ( "<< a <<" , "<< b <<" )"<<endl;
+    cout << "* f1 = " << f1 << " , f = " << f<<endl;
     cout << "******************************" << endl;
   }
 
