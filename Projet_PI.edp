@@ -87,7 +87,7 @@ while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas v
 
     plot(u);
 
-   
+
     //-----ETAPE 2 : CALCULER LA SOLUTION DU PROBLEME P' DANS 2 DIRECTIONS-----
 
     x0 += h;
@@ -166,23 +166,24 @@ while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas v
     if(k%2==0)
       {
         if(abs(errpair-err)<eps2){
-          err = 0.;
-	cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
-	}
-	else
+          // err = 0.;
+	        // cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
+          h /= 5.;
+	        }
+	      else
           errpair = err;
       }
-    
     else
       {
         if(abs(errimpair-err)<eps2){
-          err = 0.;
-	  cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
-	}
-	else
-	  errimpair = err;
+          // err = 0.;
+	        // cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
+          h /= 5.;
+	       }
+	      else
+	        errimpair = err;
       }
-    
+
 
     cout << "******************************" << endl;
     cout << "* err = " << err << endl;
