@@ -1,36 +1,43 @@
 //--------------------------------------
-// ProjetPI.edp
+// Projet_PI.edp -> Méthode de sensibilité
 //--------------------------------------
-
 // Fichiers de sortie
-ofstream tfile("laplace.txt");
-
+ofstream tfile("laplace_hd_1.txt");
+//--------------------------------------
 // Définition des constantes utiles
-real x0=0.5;
-real y0=0.5;
-real r=0.1;
-int n=100;
-real eps = 10.^-2; // Ecart minimal du trou avec le bord (je sais pas si c'est le truc le plus utile de l'univers mais bon)
-real eps2 = 10.^-4; // condition d'arret
-real h = 0.05; // Pas de déplacement maximal du trou lors de l'algo. (vitesse d'apprentissage)
-
-real delta = 0.;
-int k=0; //compte le nombre de tour de boucle.
-
+//--------------------------------------
+// (x0,y0) -> position du trou qui minimise la fonction f considérée
+real x0  = 0.5;
+real y0  = 0.5;
+// r -> taille du trou
+real r   = 0.1;
+// n -> raffinement du maillage
+int n    = 100;
+// eps -> condition d'arret
+real eps = 10.^-4;
+// h -> Pas de déplacement initial du trou (attention à ce que son choix soit compatible avec la position
+//      initiale du trou)
+real h   = 0.05;
+// k -> Compteur d'itérations
+int k=0;
+//--------------------------------------
+// Maillage
+//--------------------------------------
 // Square
-border Gamma1(t=0,1.) {x=t; y=0.;};   //bas
-border Gamma2(t=0,1.) {x=1.; y=t;};   //droite
-border Gamma3(t=0,1.) {x=1.-t; y=1;}; //haut
-border Gamma4(t=0,1.) {x=0.; y=1.-t;}; //gauche
+border Gamma1(t=0,1.) {x=t; y=0.;};     //bas
+border Gamma2(t=0,1.) {x=1.; y=t;};     //droite
+border Gamma3(t=0,1.) {x=1.-t; y=1;};   //haut
+border Gamma4(t=0,1.) {x=0.; y=1.-t;};  //gauche
 // Circular Hole
 border GammaC(t=0., 2.*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
 // Création du maillage
 mesh Thmin = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaC(-300));
-//plot(Th, ps="Thwithhole.eps");
-//
 // Définition de l'espace de discrétisation
 fespace Vhmin(Thmin,P1);
 Vhmin umin,uhmin;
+//--------------------------------------
+// Problème initial
+//--------------------------------------
 problem laplace(umin,uhmin,solver=CG) =
   int2d(Thmin)(dx(umin)*dx(uhmin)+dy(umin)*dy(uhmin))
   +on(Gamma2,umin=1.)
@@ -38,40 +45,29 @@ problem laplace(umin,uhmin,solver=CG) =
   +on(GammaC,umin=0.);
 // Résolution de Laplace
 laplace;
-
-plot(umin);
-
-
-//On oublie x0 et y0 et on choisi un point de départ pour le centre du trou.
-x0 = 0.5 ;
-y0 = 0.8 ;
-
-//Def des 2 variables qui nous permettent de connaitre f à l'étape actuelle et f à l'étape précédente
-
-real f1 = 0.;
-real f = 1.;
-
-
-real a = 1.;
-real b = 1.;
-real err = sqrt(a^2+b^2);
-real errpair = 0.;
+// plot(umin,fill=true);
+plot(Thmin);
+// Choix d'un point de départ pour la position du centre du trou
+x0             = 0.8;
+y0             = 0.8;
+// Définition des 2 variables qui nous permettent de connaitre f à l'étape actuelle et f à l'étape précédente
+real f1        = 0.;
+real f         = 1.;
+// Variables utiles pour la boucle de sensibilité
+real a         = 1.;
+real b         = 1.;
+real err       = sqrt(a^2+b^2);
+real errpair   = 0.;
 real errimpair = 0.;
-
-
-//-----------------------------------------------------------------------------
-//-------------DEBUT BOUCLE METHODE DE SENSI-----------------------------------
-//-----------------------------------------------------------------------------
-
-while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas vers 0
+tfile << -1 << " " << x0 << " " << y0 << " " << 0. << " " << 0. << endl;
+//--------------------------------------
+// Boucle de sensibilité
+//--------------------------------------
+while(err > eps)
   {
     //----------------ETAPE 1 : RESOLUTION DU PROBLEME P-----------------------
-    // Circular Hole
     border GammaH(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);};
-    // Création du maillage
     mesh Th = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaH(-300));
-
-    // Définition de l'espace de discrétisation
     fespace Vh(Th,P1);
     Vh u,uh,udx,udy;
     problem laplace(u,uh,solver=CG) =
@@ -79,26 +75,21 @@ while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas v
       +on(Gamma2,u=1)
       +on(Gamma4,u=0)
       +on(GammaH,u=0);
-    // Résolution de Laplace
     laplace;
-
     udx = dx(u);
     udy = dy(u);
-
-    plot(u);
-
-
+    // Affichage de l'évolution
+    // plot(u,fill=true);
+    //
     //-----ETAPE 2 : CALCULER LA SOLUTION DU PROBLEME P' DANS 2 DIRECTIONS-----
-
+    //
+    //-----------------------ETAPE 2A : DIRECTION (1,0)------------------------
     x0 += h;
-
-    // Circular Hole
     border GammaHpx(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t);label = 12;};
-    // Création du maillage
     mesh Thpx = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaHpx(-300));
-    // Définition de l'espace de discrétisation
     fespace Vhpx(Thpx,P1);
     Vhpx upx,uhpx,cpx;
+    // On récupère la solution de la dérivée de u sur le cercle du problème non-perturbé
     cpx = 0;
     for (int m=0;m<Thpx.nbe;++m) {
       if (Thpx.be(m).label == 12){
@@ -113,20 +104,15 @@ while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas v
       +on(Gamma2,upx=0)
       +on(Gamma4,upx=0)
       +on(12,upx=cpx);
-    // Résolution de Laplace
     laplacepx;
     real a = int1d(Thmin,Gamma2)(dx(upx)*(dx(u) - dx(umin)));
     + int1d(Thmin,Gamma4)(dx(upx)*(dx(u) - dx(umin)));
-    //integrale de dx(up) fois (dx(u)-omegad) sur le bord droit + integrale de dx(up) fois (dx(up)+omegag) sur le bord gauche
-
+    //
+    //-----------------------ETAPE 2A : DIRECTION (0,1)------------------------
     x0 -= h;
     y0 += h;
-
-    // Circular Hole
     border GammaHpy(t=0, 2*pi){x=x0+r*cos(t); y=y0+r*sin(t); label = 42;};
-    // Création du maillage
     mesh Thpy = buildmesh(Gamma1(n)+Gamma2(n)+Gamma3(n)+Gamma4(n)+GammaHpy(-300));
-    // Définition de l'espace de discrétisation
     fespace Vhpy(Thpy,P1);
     Vhpy upy,uhpy,cpy;
     cpy = 0;
@@ -143,63 +129,53 @@ while(err>eps2) // à modifier abs(f1-f)>eps2*f1 pour les cas ou f ne tend pas v
       +on(Gamma2,upy=0)
       +on(Gamma4,upy=0)
       +on(42,upy=cpy);
-    // Résolution de Laplace
     laplacepy;
     real b = int1d(Thmin,Gamma2)(dx(upy)*(dx(u) - dx(umin)))
       + int1d(Thmin,Gamma4)(dx(upy)*(dx(u) - dx(umin)));
-    // définir b =  integrale de dx(up) fois dx(u)-omegad sur le bord droit + integrale de -dx(up) fois dx(up)+omegag
-
+    //
+    //-------------ETAPE 3 : CALCUL DE LA DIRECTION DE DESCENTE----------------
+    //
     y0 -= h;
-
+    // On déplace le trou selon la direction de descente calculée
     x0 -= (h/sqrt(a*a + b*b)) * a;
     y0 -= (h/sqrt(a*a + b*b)) * b;
-
-    f1 = f;
-
-    f = 0.5*(int1d(Thmin,Gamma2)((dx(u) - dx(umin))^2) + int1d(Thmin,Gamma4)((-dx(u) + dx(umin))^2));
-
+    // Update de f et f1
+    f1  = f;
+    f   = 0.5*(int1d(Thmin,Gamma2)((dx(u) - dx(umin))^2) + int1d(Thmin,Gamma4)((-dx(u) + dx(umin))^2));
+    // Calcul de l'erreur sur le gradient
     err = sqrt(a^2 + b^2);
-
+    // Update du pas de déplacement
     if(err < 5*h)
       h /= 5.;
-
+    //
     if(k%2==0)
       {
-        if(abs(errpair-err)<eps2){
-          // err = 0.;
-	        // cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
-          h /= 5.;
-	        }
-	      else
-          errpair = err;
+        if(abs(errpair-err)<eps){
+          if (10*h > eps)
+            h /= 5.;
+	      }
+        errpair = err;
       }
     else
       {
-        if(abs(errimpair-err)<eps2){
-          // err = 0.;
-	        // cout << "l erreur est egale a celle de deux iterations plus tot" << endl;
-          h /= 5.;
-	       }
-	      else
-	        errimpair = err;
+        if(abs(errimpair-err)<eps){
+          if (10*h > eps)
+            h /= 5.;
+	      }
+	      errimpair = err;
       }
-
-
+    // Affichage
     cout << "******************************" << endl;
     cout << "* err = " << err << endl;
     cout << "* h = " << h << endl;
     cout << "* k = " << k << endl;
-    k++;
     cout << "* residual = " << abs(f-f1) << endl;
     cout << "* x0 = " << x0 << " | y0 = " << y0 << endl;
     cout << "* deplacement de x0 = " <<  (-(h/sqrt(a*a + b*b))*a) <<"  deplacement de y0 :" <<(h/sqrt(a*a + b*b))*b <<endl;
-    cout << "grad(f) = ( "<< a <<" , "<< b <<" )"<<endl;
-    cout << "f1 = " << f1 << " , f = " << f<<endl;
-    cout << " norme du gradient : " << sqrt( a*a + b*b) <<endl;
+    cout << "* grad(f) = ( "<< a <<" , "<< b <<" )"<<endl;
+    cout << "* f = " << f<<endl;
     cout << "******************************" << endl;
+    // Sauvegarde
+    tfile << k << " " << x0 << " " << y0 << " " << f << " " << err << endl;
+    k++;
   }
-
-
-
-//afficher la solution que l'on a obtenue (u,uh) et en combien de temps.
-// cout<<"On a trouver le trou en ("<<x0<<","<<y0<<"), ce qui est proche à "<<(x0-0.5)*(x0-0.5) + (y0-0.5)*(y0-0.5) << ", après "<< k << " itérations."<<endl;
