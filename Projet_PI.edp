@@ -2,7 +2,7 @@
 // Projet_PI.edp -> Méthode de sensibilité
 //--------------------------------------
 // Fichiers de sortie
-ofstream tfile("laplace_hd_1.txt");
+ofstream tfile("laplace.txt");
 //--------------------------------------
 // Définition des constantes utiles
 //--------------------------------------
